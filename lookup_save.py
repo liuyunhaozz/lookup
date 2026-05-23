@@ -89,18 +89,26 @@ def trim_entry(body):
     return core  # ORIGIN (if any) is already inside core
 
 
+# Colors are mid-toned so they stay legible on Anki's light *and* dark cards.
+# Tweak these to taste. Definition body text is left at the card's default color.
+_C_POS = "#7c3aed"      # parts of speech (violet)
+_C_SENSE = "#2563eb"    # sense numbers & sub-sense bullets (blue)
+_C_EXAMPLE = "#2e8b57"  # example sentences (green)
+_C_MUTED = "#888888"    # grammar labels & ORIGIN heading (gray)
+
+
 def format_definition(body):
-    """Turn the flat dictionary blob into structured HTML for Anki."""
+    """Turn the flat dictionary blob into structured, color-coded HTML for Anki."""
     t = trim_entry(body.strip())
     t = re.sub(r"\s*\|\s*", " · ", t)                       # overloaded pipe -> middot
     t = t.replace(" · )", ")").replace(" · ;", ";").replace(" · ,", ",")
-    t = _POS_RE.sub(r"<br><b>\1</b>", t)                    # parts of speech
-    t = _SECTION_RE.sub(r'<br><br><span style="color:#888">\1</span>', t)
-    t = _SENSE_RE.sub(r"<br><b>\1.</b> ", t)                # numbered senses
-    t = t.replace(" • ", "<br>&nbsp;&nbsp;• ")              # sub-senses
-    t = re.sub(r"\[([^\]]+)\]", r"<i>[\1]</i>", t)          # grammar labels
+    t = _POS_RE.sub(r'<br><b style="color:%s">\1</b>' % _C_POS, t)          # parts of speech
+    t = _SECTION_RE.sub(r'<br><br><span style="color:%s">\1</span>' % _C_MUTED, t)
+    t = _SENSE_RE.sub(r'<br><b style="color:%s">\1.</b> ' % _C_SENSE, t)    # numbered senses
+    t = t.replace(" • ", '<br>&nbsp;&nbsp;<span style="color:%s">•</span> ' % _C_SENSE)
+    t = re.sub(r"\[([^\]]+)\]", r'<i style="color:%s">[\1]</i>' % _C_MUTED, t)  # grammar labels
     t = re.sub(r":\s([^<]+?)(?=<|$)",                       # example sentences
-               lambda m: ": <i>%s</i>" % m.group(1).rstrip(), t)
+               lambda m: ': <i style="color:%s">%s</i>' % (_C_EXAMPLE, m.group(1).rstrip()), t)
     t = re.sub(r"^(?:<br>)+", "", t)                        # no leading break
     t = t.replace("</b> <br>", "</b><br>")
     t = re.sub(r"[ ]{2,}", " ", t).strip()
