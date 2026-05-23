@@ -20,6 +20,7 @@ Definitions are saved as light HTML, so they import into Anki as clean, readable
 |------|------|
 | `lookup_save.py` | The worker. Looks up a word and appends it to the CSV. No installs needed — uses Apple's built-in `/usr/bin/python3`. |
 | `Save to Word List.workflow` | The trigger: an Automator **Quick Action**. Already installed to `~/Library/Services/`. |
+| `batch_lookup.py` | Bulk-import: looks up every word in a column of a CSV you already have and adds them to your list. See **Bulk-import a word list** below. |
 
 **Your list lives at:** `~/Documents/vocabulary.csv`
 Columns: `word, pronunciation, definition, date_saved, source`.
@@ -88,6 +89,25 @@ Open `~/Documents/vocabulary.csv` in **Numbers** any time to browse your collect
 ```sh
 echo "serendipity" | /usr/bin/python3 lookup_save.py
 ```
+
+## Bulk-import a word list
+
+Already have a list of words somewhere (a spreadsheet export, a reading log)? `batch_lookup.py`
+runs the same look-up-and-save for every word in a CSV column, so you can seed your collection in
+one go:
+
+```sh
+/usr/bin/python3 batch_lookup.py --file words.csv      # reads the 3rd column by default
+/usr/bin/python3 batch_lookup.py --file *.csv          # several files at once
+/usr/bin/python3 batch_lookup.py --file words.csv --column 2 --skip-header
+```
+
+- `--column N` picks the 1-based column to read words from (default: **3**).
+- `--skip-header` drops the first row. (Not strictly needed — a header cell like *"word"* has no
+  dictionary entry, so it's skipped automatically.)
+- Words already on your list, or with no dictionary entry, are skipped — re-running is safe.
+
+Each word fires the usual "saved ✓" banner, so a few hundred rows means a burst of notifications.
 
 ## If the Quick Action ever misbehaves — rebuild it by hand
 
