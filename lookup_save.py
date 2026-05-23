@@ -15,6 +15,7 @@ Manual test:
 
 import csv
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -49,6 +50,61 @@ def parse_definition(raw):
         pronunciation = ""
         body = raw.strip()
     return pronunciation, body
+
+
+# --- definition formatting (HTML, for pretty Anki cards) ---------------------
+
+# Reference sections we drop to keep cards readable (e.g. "run" has ~70 idioms).
+# ORIGIN is kept — it sits at the end of the entry, after these.
+_DROP_SECTIONS = ("DERIVATIVES", "PHRASES", "PHRASAL VERBS", "USAGE")
+
+# Part-of-speech labels, longest first so multi-word ones win.
+_POS = [
+    "combining form", "modal verb", "auxiliary verb", "phrasal verb",
+    "transitive verb", "intransitive verb", "plural noun", "proper noun",
+    "mass noun", "definite article", "indefinite article",
+    "cardinal number", "ordinal number",
+    "noun", "verb", "adjective", "adverb", "pronoun", "preposition",
+    "conjunction", "determiner", "exclamation", "interjection",
+    "abbreviation", "symbol", "prefix", "suffix", "contraction",
+]
+_POS_RE = re.compile(r"(?:(?<=\A)|(?<=\.\s)|(?<=\)\s))(" + "|".join(_POS) + r")\b")
+_SECTION_RE = re.compile(r"\b(ORIGIN|DERIVATIVES|PHRASES|PHRASAL VERBS|USAGE)\b")
+_SENSE_RE = re.compile(
+    r"(?:(?<=</b>\s)|(?<=\]\s)|(?<=\.\s)|(?<=\)\s))(\d{1,2})\s"
+)
+
+
+def trim_entry(body):
+    """Keep core senses + ORIGIN; drop the long phrase/derivative reference lists."""
+    cut = len(body)
+    for kw in _DROP_SECTIONS:
+        i = body.find(kw)
+        if i != -1:
+            cut = min(cut, i)
+    core = body[:cut].rstrip()
+    origin = body.find("ORIGIN")
+    if origin >= cut:  # ORIGIN sits after the dropped sections (the usual case)
+        return (core + " " + body[origin:].strip()).strip()
+    return core  # ORIGIN (if any) is already inside core
+
+
+def format_definition(body):
+    """Turn the flat dictionary blob into structured HTML for Anki."""
+    t = trim_entry(body.strip())
+    t = re.sub(r"\s*\|\s*", " · ", t)                       # overloaded pipe -> middot
+    t = t.replace(" · )", ")").replace(" · ;", ";").replace(" · ,", ",")
+    t = _POS_RE.sub(r"<br><b>\1</b>", t)                    # parts of speech
+    t = _SECTION_RE.sub(r'<br><br><span style="color:#888">\1</span>', t)
+    t = _SENSE_RE.sub(r"<br><b>\1.</b> ", t)                # numbered senses
+    t = t.replace(" • ", "<br>&nbsp;&nbsp;• ")              # sub-senses
+    t = re.sub(r"\[([^\]]+)\]", r"<i>[\1]</i>", t)          # grammar labels
+    t = re.sub(r":\s([^<]+?)(?=<|$)",                       # example sentences
+               lambda m: ": <i>%s</i>" % m.group(1).rstrip(), t)
+    t = re.sub(r"^(?:<br>)+", "", t)                        # no leading break
+    t = t.replace("</b> <br>", "</b><br>")
+    t = re.sub(r"[ ]{2,}", " ", t).strip()
+    return t
 
 
 def frontmost_app():
@@ -136,7 +192,7 @@ def main():
     append_row(CSV_PATH, {
         "word": term,
         "pronunciation": pronunciation,
-        "definition": definition,
+        "definition": format_definition(definition),
         "date_saved": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "source": frontmost_app(),
     })

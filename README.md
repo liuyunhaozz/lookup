@@ -21,6 +21,12 @@ can open in Numbers or Excel. It uses the *same* dictionaries as Apple's Diction
 Columns: `word, pronunciation, definition, date_saved, source`.
 To move it, change `CSV_PATH` at the top of `lookup_save.py`.
 
+The **`definition`** column is light **HTML** — parts of speech in bold, numbered senses and
+sub-senses on their own lines, example sentences in italics, etymology under a muted `ORIGIN`
+heading — so it renders as a tidy card in Anki. To keep cards readable, the long `PHRASES`,
+`PHRASAL VERBS`, and `DERIVATIVES` reference lists are dropped (e.g. *run* keeps its ~27 core
+senses, not its ~70 idioms). See **Importing to Anki** below.
+
 ## One-time setup (≈1 minute)
 
 The script and the Quick Action are already in place. You just need to assign a hotkey.
@@ -56,7 +62,22 @@ The first time you trigger it, macOS may ask to:
 3. A banner confirms **“📖 Word saved — <word> ✓.”** Done. It also tells you if a word is
    already on the list or has no dictionary entry.
 
-Open `~/Documents/vocabulary.csv` in **Numbers** any time to browse your collection.
+Open `~/Documents/vocabulary.csv` in **Numbers** any time to browse your collection. (The
+`definition` cells contain HTML tags, so they look their best in Anki, not Numbers.)
+
+## Importing to Anki
+
+1. In Anki: **File → Import…** and choose `~/Documents/vocabulary.csv`.
+2. In the import dialog:
+   - **Type:** Basic (or your preferred note type).
+   - **Field separator:** Comma.
+   - **✅ Allow HTML in fields** — important, or the `<br>`/`<b>` tags show up literally.
+   - Map the columns to fields, e.g. **word → Front**, **definition → Back**. You can append
+     `pronunciation` to the Front, or add extra fields for `pronunciation`/`source` if you like.
+3. Import. Each word becomes a card with a cleanly laid-out definition on the back.
+
+> Tip: because the `word` column is the first field, Anki will treat it as the key and skip
+> duplicates on re-import — so you can keep importing the same growing CSV as you add words.
 
 ## Try it without the hotkey
 
