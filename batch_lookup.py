@@ -1,29 +1,40 @@
 #!/usr/bin/python3
 """
-batch_lookup.py — Bulk-import a CSV's worth of words into your vocabulary list.
+batch_lookup.py — Bulk-import words from CSV or Markdown files into your list.
 
-Runs `lookup_save.py` once per word found in the **3rd column** of each CSV you
-give it, so an existing list of words gets looked up and appended (with full
-definitions) to `~/Documents/vocabulary.csv`, exactly as the hotkey would.
+Runs `lookup_save.py` once per word, so an existing list of words gets looked up
+and appended (with full definitions) to `~/Documents/vocabulary.csv`, exactly as
+the hotkey would. Where the words come from depends on the file extension:
+
+  * `.csv`           — the **3rd column** of each row (change with --column).
+  * `.md`/`.markdown` — every word/phrase inside "double quotes" on each line
+                        (both straight "…" and curly "…" quotes are recognized).
 
 Words with no dictionary entry, or already on the list, are skipped by
-`lookup_save.py` itself — so a stray header cell like "word" just no-ops.
+`lookup_save.py` itself — so a stray header cell like "word" just no-ops, and
+re-running is safe.
 
 Usage:
     /usr/bin/python3 batch_lookup.py --file words.csv
-    /usr/bin/python3 batch_lookup.py --file *.csv          # shell expands the glob
-    /usr/bin/python3 batch_lookup.py --file a.csv b.csv --column 3 --skip-header
+    /usr/bin/python3 batch_lookup.py --file notes.md
+    /usr/bin/python3 batch_lookup.py --file *.csv *.md       # shell expands globs
+    /usr/bin/python3 batch_lookup.py --file a.csv --column 2 --skip-header
 """
 
 import argparse
 import csv
 import glob
 import os
+import re
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORKER = os.path.join(HERE, "lookup_save.py")
+
+# Text inside straight "…" or curly "…" quotes. Non-greedy, so multiple quoted
+# spans on one Markdown line are matched separately.
+QUOTE_RE = re.compile(r'"([^"]+)"|“([^”]+)”')
 
 
 def words_from_csv(path, col_index, skip_header):
@@ -37,6 +48,16 @@ def words_from_csv(path, col_index, skip_header):
                 cell = row[col_index].strip()
                 if cell:
                     yield cell
+
+
+def words_from_md(path):
+    """Yield each trimmed quoted word/phrase, in order, from the Markdown file."""
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            for m in QUOTE_RE.finditer(line):
+                word = (m.group(1) or m.group(2)).strip()
+                if word:
+                    yield word
 
 
 def lookup(word):
@@ -53,16 +74,16 @@ def main():
         description="Look up and save every word in a CSV column via lookup_save.py."
     )
     parser.add_argument(
-        "--file", required=True, nargs="+", metavar="CSV",
-        help="One or more CSV files (globs like *.csv are fine).",
+        "--file", required=True, nargs="+", metavar="FILE",
+        help="One or more .csv or .md files (globs like *.csv are fine).",
     )
     parser.add_argument(
         "--column", type=int, default=3, metavar="N",
-        help="1-based column to read words from (default: 3).",
+        help="1-based column to read words from in CSV files (default: 3).",
     )
     parser.add_argument(
         "--skip-header", action="store_true",
-        help="Skip the first row of each CSV.",
+        help="Skip the first row of each CSV (ignored for .md files).",
     )
     args = parser.parse_args()
 
@@ -85,7 +106,12 @@ def main():
             print("⚠️  Skipping (not found): %s" % path)
             continue
         print("📄 %s" % path)
-        for word in words_from_csv(path, col_index, args.skip_header):
+        ext = os.path.splitext(path)[1].lower()
+        if ext in (".md", ".markdown"):
+            words = words_from_md(path)
+        else:
+            words = words_from_csv(path, col_index, args.skip_header)
+        for word in words:
             total += 1
             print("   • %s" % word)
             lookup(word)
