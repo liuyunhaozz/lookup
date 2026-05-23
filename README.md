@@ -4,6 +4,10 @@ Select a word anywhere on your Mac (Safari, your news app, Mail, anywhere), pres
 keyboard shortcut, and the word + its dictionary definition is appended to a CSV file you
 can open in Numbers or Excel. It uses the *same* dictionaries as Apple's Dictionary app.
 
+Definitions are saved as light HTML, so they import into Anki as clean, readable cards:
+
+![Preview of formatted definition cards](screen.png)
+
 > **Why a hotkey instead of "just watching Dictionary.app"?**
 > The Dictionary app and the macOS "Look Up" popover keep no history and expose no hook —
 > nothing can record what you look up there. So this gives you a deliberate *"look up **and
